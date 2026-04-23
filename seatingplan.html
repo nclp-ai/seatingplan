@@ -31,7 +31,7 @@
             background: linear-gradient(to bottom, #2c3e50, #34495e);
             color: white;
             text-align: center;
-            padding: 10px;
+            padding: 6px 10px;
             border-radius: 8px;
             border: 4px solid #7f8c8d;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
@@ -115,25 +115,26 @@
         </div>
 
         <!-- 右側：座位表區 -->
-        <div class="flex-1 bg-gray-100 p-6 overflow-auto" id="mainRightArea">
-            <div id="printArea" class="max-w-5xl mx-auto bg-white p-8 rounded-xl shadow border border-gray-200 min-h-full flex flex-col">
+        <div class="flex-1 bg-gray-100 p-4 overflow-auto" id="mainRightArea">
+            <!-- 修改: 縮小內外間距 p-4，以適應橫向排版並確保 A4 橫式匯出時不會超出單頁 -->
+            <div id="printArea" class="max-w-[1200px] w-full mx-auto bg-white p-4 rounded-xl shadow border border-gray-200 min-h-full flex flex-col">
                 
                 <!-- 動態顯示 班別 座位表 標題 -->
-                <h2 id="classTitleDisplay" class="text-3xl font-bold text-center mb-8 text-gray-800 tracking-wider">班別座位表</h2>
+                <h2 id="classTitleDisplay" class="text-3xl font-bold text-center mb-3 text-gray-800 tracking-wider">班別座位表</h2>
                 
                 <!-- 座位網格 -->
-                <div id="seatingGrid" class="flex flex-col items-center flex-1">
+                <div id="seatingGrid" class="flex flex-col items-center flex-1 justify-center">
                     <!-- 座位會由 JS 動態生成在這裡 -->
                 </div>
                 
                 <!-- 底部區域：黑板與門口 -->
-                <div class="mt-16 relative flex justify-center items-end h-24 shrink-0 w-full">
+                <div class="mt-4 relative flex justify-center items-end shrink-0 w-full">
                     <!-- 黑板置中 -->
                     <div class="blackboard w-1/2 text-xl m-0 relative z-10">黑板 / 教師桌方向</div>
                     
                     <!-- 門口圖示置右下角 -->
-                    <div class="absolute right-0 bottom-0 flex flex-col items-center text-gray-700 border-2 border-orange-200 p-3 rounded-lg bg-orange-50 shadow-sm w-24">
-                        <i class="fa-solid fa-door-open text-4xl text-orange-700 mb-1"></i>
+                    <div class="absolute right-0 bottom-0 flex flex-col items-center text-gray-700 border-2 border-orange-200 p-2 rounded-lg bg-orange-50 shadow-sm w-20">
+                        <i class="fa-solid fa-door-open text-3xl text-orange-700 mb-1"></i>
                         <span class="font-bold text-sm tracking-widest">門口</span>
                     </div>
                 </div>
@@ -342,25 +343,25 @@
 
             for (let r = 0; r < rows; r++) {
                 const rowDiv = document.createElement('div');
-                rowDiv.className = 'flex justify-center mb-4';
+                rowDiv.className = 'flex justify-center mb-2'; // 修改: 進一步縮減上下間距，騰出垂直空間
                 
                 // 處理 4人一組的行間距 (每兩列加一個較大的 bottom margin)
                 if (layout === 'group4' && r % 2 === 1 && r !== rows - 1) {
-                    rowDiv.classList.add('mb-10');
+                    rowDiv.classList.add('mb-5'); // 修改: 微調群組間距
                 }
 
                 for (let c = 0; c < cols; c++) {
                     const seatId = `${r}-${c}`;
                     const seatDiv = document.createElement('div');
                     
-                    // 座位基礎樣式
-                    seatDiv.className = 'seat w-24 h-32 bg-gray-50 border-2 border-gray-300 rounded-lg shadow-sm flex flex-col items-center justify-center p-1 mx-2 relative overflow-hidden';
+                    // 座位基礎樣式 (修改: 橫向排版 -> w-40 加寬, h-[4.5rem] 變矮, flex-row 確保元素平行)
+                    seatDiv.className = 'seat w-40 h-[4.5rem] bg-gray-50 border-2 border-gray-300 rounded-lg shadow-sm flex flex-row items-center justify-center p-1 mx-1 relative overflow-hidden';
                     
                     // 處理列間距 (走廊)
                     if (layout === 'double' && c % 2 === 1 && c !== cols - 1) {
-                        seatDiv.classList.add('mr-10'); // 雙連座走廊
+                        seatDiv.classList.add('mr-6'); // 雙連座走廊
                     } else if (layout === 'group4' && c % 2 === 1 && c !== cols - 1) {
-                        seatDiv.classList.add('mr-10'); // 4人一組的垂直走廊
+                        seatDiv.classList.add('mr-6'); // 4人一組的垂直走廊
                     }
 
                     // 設置拖放屬性
@@ -394,7 +395,8 @@
         // 創建學生卡片 DOM
         function createStudentCard(student, inSeat) {
             const card = document.createElement('div');
-            card.className = `student-card bg-white border border-gray-200 rounded p-2 flex ${inSeat ? 'flex-col h-full w-full justify-center items-center text-center shadow-none border-none' : 'items-center shadow-sm'} group`;
+            // 修改: 如果在座位上(inSeat)，採用橫向設計 (flex-row, justify-start, 內容靠左)
+            card.className = `student-card bg-white border border-gray-200 rounded p-2 flex ${inSeat ? 'flex-row h-full w-full justify-start items-center text-left shadow-none border-none !bg-transparent !p-1' : 'items-center shadow-sm'} group`;
             card.draggable = true;
             card.id = `card-${student.id}`;
             card.setAttribute('data-student-id', student.id);
@@ -412,12 +414,14 @@
 
             // 相片處理與上傳
             const photoContainer = document.createElement('div');
-            photoContainer.className = `relative cursor-pointer ${inSeat ? 'mb-1' : 'mr-3'}`;
+            // 修改: 相片統一置左 (使用 shrink-0 防止被擠壓，並設定右側間距)
+            photoContainer.className = `relative cursor-pointer shrink-0 ${inSeat ? 'mr-2' : 'mr-3'}`;
             photoContainer.title = "點擊上傳/更換實體照片";
             
             const img = document.createElement('img');
             img.src = student.photo;
-            img.className = `${inSeat ? 'w-14 h-14' : 'w-10 h-10'} rounded-full object-cover border-2 border-gray-100 group-hover:brightness-75 transition-all shadow-sm bg-gray-50`;
+            // 修改: 橫向排版下微調頭像大小 (從 14 改為 11)
+            img.className = `${inSeat ? 'w-11 h-11' : 'w-10 h-10'} rounded-full object-cover border-2 border-gray-100 group-hover:brightness-75 transition-all shadow-sm bg-gray-50`;
             
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
@@ -436,11 +440,13 @@
 
             // 資料區
             const infoDiv = document.createElement('div');
-            infoDiv.className = inSeat ? 'w-full' : 'flex-1';
+            // 修改: 增加 min-w-0 以防英文名稱過長時撐破 flex 佈局
+            infoDiv.className = `min-w-0 ${inSeat ? 'flex-1 text-left' : 'flex-1'}`;
             
             const numName = `<div class="font-bold text-gray-800 text-sm truncate leading-tight">${student.num}. ${student.name}</div>`;
+            // 修改: 橫向排版時，英文名改為單行顯示且支援過長截斷
             const extraInfo = inSeat ? 
-                `<div class="text-[10px] text-gray-500 mt-0.5 truncate">${student.engName.split(' ')[0]}</div>` : 
+                `<div class="text-[10px] text-gray-500 mt-0.5 truncate" title="${student.engName}">${student.engName}</div>` : 
                 `<div class="text-xs text-gray-500 flex justify-between mt-1"><span>${student.engName}</span><span title="高度" class="text-gray-400 ml-1"><i class="fa-solid fa-ruler-vertical mr-1"></i>${student.height}cm</span></div>`;
 
             infoDiv.innerHTML = numName + extraInfo;
@@ -610,7 +616,7 @@
             
             // 設定 PDF 參數
             const opt = {
-                margin:       [5, 10, 5, 10], // 上, 右, 下, 左
+                margin:       [3, 3, 3, 3], // 修改: 將 PDF 邊界再縮小，保證滿版座位表必定能一頁裝入
                 filename:     `${className}班_座位表.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, logging: false }, 
