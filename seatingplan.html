@@ -143,9 +143,9 @@
     </div>
 
     <script>
-        // --- 模擬數據源 (基於使用者上傳的 CSV 內容) ---
+        // --- 模擬數據源 (基於使用者上傳的 CSV 內容，補充至指定人數) ---
         const mockData = [
-            // 1A班
+            // 1A班 (31人)
             { id: '1A01', class: '1A', num: 1, name: '陳心悠', engName: 'Chan Summer Glitz', height: 153, gender: 'F' },
             { id: '1A02', class: '1A', num: 2, name: '陳思穎', engName: 'Chan Sze Wing', height: 153, gender: 'F' },
             { id: '1A03', class: '1A', num: 3, name: '陳泳心', engName: 'Chan Wing Sum', height: 153, gender: 'F' },
@@ -166,8 +166,19 @@
             { id: '1A18', class: '1A', num: 18, name: '郭定康', engName: 'Kwok Ding Hong', height: 170, gender: 'M' },
             { id: '1A19', class: '1A', num: 19, name: '林賢坤', engName: 'Lam Yin Kwan', height: 164, gender: 'M' },
             { id: '1A20', class: '1A', num: 20, name: '劉祈亨', engName: 'Lau Ki Hang', height: 166, gender: 'M' },
+            { id: '1A21', class: '1A', num: 21, name: '陳家樂', engName: 'Chan Ka Lok', height: 165, gender: 'M' },
+            { id: '1A22', class: '1A', num: 22, name: '李芷晴', engName: 'Lee Tsz Ching', height: 155, gender: 'F' },
+            { id: '1A23', class: '1A', num: 23, name: '張俊軒', engName: 'Cheung Chun Hin', height: 168, gender: 'M' },
+            { id: '1A24', class: '1A', num: 24, name: '王梓涵', engName: 'Wong Tsz Ham', height: 158, gender: 'F' },
+            { id: '1A25', class: '1A', num: 25, name: '劉子健', engName: 'Lau Tsz Kin', height: 170, gender: 'M' },
+            { id: '1A26', class: '1A', num: 26, name: '楊詩敏', engName: 'Yeung Sze Man', height: 154, gender: 'F' },
+            { id: '1A27', class: '1A', num: 27, name: '黃浩然', engName: 'Wong Ho Yin', height: 166, gender: 'M' },
+            { id: '1A28', class: '1A', num: 28, name: '吳卓希', engName: 'Ng Cheuk Hei', height: 169, gender: 'M' },
+            { id: '1A29', class: '1A', num: 29, name: '周嘉慧', engName: 'Chow Ka Wai', height: 156, gender: 'F' },
+            { id: '1A30', class: '1A', num: 30, name: '林子豪', engName: 'Lam Tsz Ho', height: 172, gender: 'M' },
+            { id: '1A31', class: '1A', num: 31, name: '何曉彤', engName: 'Ho Hiu Tung', height: 152, gender: 'F' },
             
-            // 1B班 (補充全班名單)
+            // 1B班 (32人)
             { id: '1B01', class: '1B', num: 1, name: '區子傑', engName: 'Au Tsz Kit', height: 160, gender: 'M' },
             { id: '1B02', class: '1B', num: 2, name: '陳浩然', engName: 'Chan Ho Yin', height: 165, gender: 'M' },
             { id: '1B03', class: '1B', num: 3, name: '張芷晴', engName: 'Cheung Tsz Ching', height: 150, gender: 'F' },
@@ -188,8 +199,20 @@
             { id: '1B18', class: '1B', num: 18, name: '王美玲', engName: 'Wong Mei Ling', height: 153, gender: 'F' },
             { id: '1B19', class: '1B', num: 19, name: '楊浩宇', engName: 'Yeung Ho Yu', height: 167, gender: 'M' },
             { id: '1B20', class: '1B', num: 20, name: '葉佩雯', engName: 'Yip Pui Man', height: 159, gender: 'F' },
+            { id: '1B21', class: '1B', num: 21, name: '黎建威', engName: 'Lai Kin Wai', height: 168, gender: 'M' },
+            { id: '1B22', class: '1B', num: 22, name: '陳芷茵', engName: 'Chan Tsz Yan', height: 153, gender: 'F' },
+            { id: '1B23', class: '1B', num: 23, name: '梁展鋒', engName: 'Leung Chin Fung', height: 171, gender: 'M' },
+            { id: '1B24', class: '1B', num: 24, name: '郭美玲', engName: 'Kwok Mei Ling', height: 155, gender: 'F' },
+            { id: '1B25', class: '1B', num: 25, name: '鄭嘉晉', engName: 'Cheng Ka Chun', height: 165, gender: 'M' },
+            { id: '1B26', class: '1B', num: 26, name: '黃麗儀', engName: 'Wong Lai Yee', height: 150, gender: 'F' },
+            { id: '1B27', class: '1B', num: 27, name: '蔡俊熙', engName: 'Choi Chun Hei', height: 170, gender: 'M' },
+            { id: '1B28', class: '1B', num: 28, name: '曾慧敏', engName: 'Tsang Wai Man', height: 158, gender: 'F' },
+            { id: '1B29', class: '1B', num: 29, name: '何家寶', engName: 'Ho Ka Po', height: 166, gender: 'M' },
+            { id: '1B30', class: '1B', num: 30, name: '盧梓健', engName: 'Lo Tsz Kin', height: 169, gender: 'M' },
+            { id: '1B31', class: '1B', num: 31, name: '彭美琪', engName: 'Pang Mei Ki', height: 154, gender: 'F' },
+            { id: '1B32', class: '1B', num: 32, name: '蘇家俊', engName: 'So Ka Chun', height: 173, gender: 'M' },
 
-            // 1C班 (加入體格資料擷取名單及補充全班名單)
+            // 1C班 (30人)
             { id: '1C01', class: '1C', num: 1, name: '張心穎', engName: 'Cheung Sum Wing Yan Ember', height: 145, gender: 'F' },
             { id: '1C02', class: '1C', num: 2, name: '伍朗儀', engName: 'Ng Long Yee', height: 159, gender: 'F' },
             { id: '1C03', class: '1C', num: 3, name: '鄧婥瀅', engName: 'Tang Cheuk Ying', height: 148, gender: 'F' },
@@ -209,7 +232,17 @@
             { id: '1C17', class: '1C', num: 17, name: '鄧浩然', engName: 'Tang Ho Yin', height: 169, gender: 'M' },
             { id: '1C18', class: '1C', num: 18, name: '黃子軒', engName: 'Wong Tsz Hin', height: 167, gender: 'M' },
             { id: '1C19', class: '1C', num: 19, name: '楊凱晴', engName: 'Yeung Hoi Ching', height: 152, gender: 'F' },
-            { id: '1C20', class: '1C', num: 20, name: '葉梓晴', engName: 'Yip Tsz Ching', height: 155, gender: 'F' }
+            { id: '1C20', class: '1C', num: 20, name: '葉梓晴', engName: 'Yip Tsz Ching', height: 155, gender: 'F' },
+            { id: '1C21', class: '1C', num: 21, name: '袁嘉慧', engName: 'Yuen Ka Wai', height: 155, gender: 'F' },
+            { id: '1C22', class: '1C', num: 22, name: '張展鵬', engName: 'Cheung Chin Pang', height: 170, gender: 'M' },
+            { id: '1C23', class: '1C', num: 23, name: '李心穎', engName: 'Lee Sum Wing', height: 152, gender: 'F' },
+            { id: '1C24', class: '1C', num: 24, name: '王柏熹', engName: 'Wong Pak Hei', height: 168, gender: 'M' },
+            { id: '1C25', class: '1C', num: 25, name: '林可盈', engName: 'Lam Ho Ying', height: 156, gender: 'F' },
+            { id: '1C26', class: '1C', num: 26, name: '陳子豪', engName: 'Chan Tsz Ho', height: 165, gender: 'M' },
+            { id: '1C27', class: '1C', num: 27, name: '黃佩珊', engName: 'Wong Pui Shan', height: 154, gender: 'F' },
+            { id: '1C28', class: '1C', num: 28, name: '周皓文', engName: 'Chow Ho Man', height: 172, gender: 'M' },
+            { id: '1C29', class: '1C', num: 29, name: '吳凱婷', engName: 'Ng Hoi Ting', height: 158, gender: 'F' },
+            { id: '1C30', class: '1C', num: 30, name: '鄭宇軒', engName: 'Cheng Yu Hin', height: 169, gender: 'M' }
         ];
 
         // 為學生分配 AI 動畫人物頭像 (基於其名字生成，每次顯示均相同)
