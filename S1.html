@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中一級班主任座位表系統</title>
+    <!-- 引入 Tailwind CSS 作為樣式框架 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 圖示 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 html2pdf.js 用於匯出 PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.css"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body { font-family: 'PingFang HK', 'Microsoft JhengHei', sans-serif; background-color: #f3f4f6; overflow: hidden;}
+        /* 自定義滾動條 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .student-card { transition: all 0.2s; cursor: grab; }
+        .student-card:active { cursor: grabbing; transform: scale(0.95); }
+        .student-card.dragging { opacity: 0.5; border: 2px dashed #3b82f6; }
+        
+        .seat { transition: all 0.3s; }
+        .seat.drag-over { background-color: #bfdbfe; border-color: #3b82f6; transform: scale(1.02); }
+        
+        .blackboard {
+            background: linear-gradient(to bottom, #2c3e50, #34495e);
+            color: white;
+            text-align: center;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 4px solid #7f8c8d;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            font-weight: bold;
+            letter-spacing: 5px;
+        }
+
+        /* 隱藏文件上傳按鈕，由圖片點擊觸發 */
+        .photo-upload { display: none; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- 頂部控制列 -->
+    <header class="bg-white shadow-md p-4 z-10 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-chair text-blue-500 mr-2"></i>座位表系統</h1>
+            <div class="h-8 w-px bg-gray-300 mx-2"></div>
+            
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-semibold text-gray-600">班別:</label>
+                <select id="classSelect" class="border rounded px-2 py-1 bg-gray-50 focus:ring-2 focus:ring-blue-500 font-bold">
+                    <option value="1A">1A</option>
+                    <option value="1B">1B</option>
+                    <option value="1C">1C</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-semibold text-gray-600">列 (Row):</label>
+                <input type="number" id="rowsInput" value="6" min="1" max="10" class="border rounded px-2 py-1 w-16 bg-gray-50 text-center">
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-semibold text-gray-600">行 (Col):</label>
+                <input type="number" id="colsInput" value="6" min="1" max="10" class="border rounded px-2 py-1 w-16 bg-gray-50 text-center">
+            </div>
+
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-semibold text-gray-600">模式:</label>
+                <select id="layoutSelect" class="border rounded px-2 py-1 bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                    <option value="single">單座位 (考試模式)</option>
+                    <option value="double">雙連座</option>
+                    <option value="group4">4人一組</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <button onclick="autoAssign('number')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-2 rounded font-medium text-sm transition-colors">
+                <i class="fa-solid fa-arrow-down-1-9 mr-1"></i>按學號
+            </button>
+            <button onclick="autoAssign('height')" class="bg-green-100 text-green-700 hover:bg-green-200 px-3 py-2 rounded font-medium text-sm transition-colors" title="較矮坐前方，較高遠離黑板">
+                <i class="fa-solid fa-ruler-vertical mr-1"></i>按高度
+            </button>
+            <button onclick="autoAssign('random')" class="bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-2 rounded font-medium text-sm transition-colors">
+                <i class="fa-solid fa-dice mr-1"></i>隨機
+            </button>
+            <button onclick="clearSeats()" class="bg-red-100 text-red-700 hover:bg-red-200 px-3 py-2 rounded font-medium text-sm transition-colors">
+                <i class="fa-solid fa-eraser mr-1"></i>清空
+            </button>
+            <div class="h-8 w-px bg-gray-300 mx-1"></div>
+            <button onclick="exportPDF()" class="bg-gray-800 text-white hover:bg-gray-900 px-4 py-2 rounded font-medium text-sm transition-colors shadow-sm">
+                <i class="fa-solid fa-file-pdf mr-1"></i>匯出 PDF
+            </button>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- 左側：學生名單區 -->
+        <div class="w-72 bg-white border-r border-gray-200 flex flex-col shrink-0">
+            <div class="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center shadow-sm z-10">
+                <span class="font-bold text-gray-700" id="unassignedCount">未分配學生 (0)</span>
+                <span class="text-xs text-blue-500 font-medium"><i class="fa-solid fa-image mr-1"></i>點擊相片可更改</span>
+            </div>
+            <!-- 學生名單容器 (可放置區) -->
+            <div id="studentList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50" ondragover="allowDrop(event)" ondrop="dropToSidebar(event)">
+                <!-- 學生卡片會由 JS 動態生成在這裡 -->
+            </div>
+        </div>
+
+        <!-- 右側：座位表區 -->
+        <div class="flex-1 bg-gray-100 p-4 overflow-auto" id="mainRightArea">
+            <!-- 修改: 縮小內外間距 p-4，以適應橫向排版並確保 A4 橫式匯出時不會超出單頁 -->
+            <div id="printArea" class="max-w-[1200px] w-full mx-auto bg-white p-4 rounded-xl shadow border border-gray-200 min-h-full flex flex-col">
+                
+                <!-- 動態顯示 班別 座位表 標題 -->
+                <h2 id="classTitleDisplay" class="text-3xl font-bold text-center mb-3 text-gray-800 tracking-wider">班別座位表</h2>
+                
+                <!-- 座位網格 -->
+                <div id="seatingGrid" class="flex flex-col items-center flex-1 justify-center">
+                    <!-- 座位會由 JS 動態生成在這裡 -->
+                </div>
+                
+                <!-- 底部區域：黑板與門口 -->
+                <div class="mt-4 relative flex justify-center items-end shrink-0 w-full">
+                    <!-- 黑板置中 -->
+                    <div class="blackboard w-1/2 text-xl m-0 relative z-10">黑板 / 教師桌方向</div>
+                    
+                    <!-- 門口圖示置右下角 -->
+                    <div class="absolute right-0 bottom-0 flex flex-col items-center text-gray-700 border-2 border-orange-200 p-2 rounded-lg bg-orange-50 shadow-sm w-20">
+                        <i class="fa-solid fa-door-open text-3xl text-orange-700 mb-1"></i>
+                        <span class="font-bold text-sm tracking-widest">門口</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 模擬數據源 (基於使用者上傳的 CSV 內容，補充至指定人數) ---
+        const mockData = [
+            // 1A班 (31人)
+            { id: '1A01', class: '1A', num: 1, name: '陳心悠', engName: 'Chan Summer Glitz', height: 153, gender: 'F' },
+            { id: '1A02', class: '1A', num: 2, name: '陳思穎', engName: 'Chan Sze Wing', height: 153, gender: 'F' },
+            { id: '1A03', class: '1A', num: 3, name: '陳泳心', engName: 'Chan Wing Sum', height: 153, gender: 'F' },
+            { id: '1A04', class: '1A', num: 4, name: '陳宇翹', engName: 'Chan Yu Kiu', height: 157.5, gender: 'F' },
+            { id: '1A05', class: '1A', num: 5, name: '鍾凱琳', engName: 'Chung Hoi Lam', height: 144.5, gender: 'F' },
+            { id: '1A06', class: '1A', num: 6, name: '何姵霖', engName: 'Ho Pei Lam', height: 145, gender: 'F' },
+            { id: '1A07', class: '1A', num: 7, name: '劉思綽', engName: 'Lau Sze Cheuk', height: 157, gender: 'F' },
+            { id: '1A08', class: '1A', num: 8, name: '李詠浵', engName: 'Li Wing Tung', height: 150, gender: 'F' },
+            { id: '1A09', class: '1A', num: 9, name: '顏君心', engName: 'Ngan Kwan Sum', height: 148, gender: 'F' },
+            { id: '1A10', class: '1A', num: 10, name: '屈彥樺', engName: 'Qu Yin Wa', height: 160, gender: 'F' },
+            { id: '1A11', class: '1A', num: 11, name: '譚樂婷', engName: 'Tam Lok Ting Angel', height: 155, gender: 'F' },
+            { id: '1A12', class: '1A', num: 12, name: '徐義晽', engName: 'Tsui Evelyn', height: 152, gender: 'F' },
+            { id: '1A13', class: '1A', num: 13, name: '楊霖', engName: 'Yeung Lam', height: 162, gender: 'M' },
+            { id: '1A14', class: '1A', num: 14, name: '楊善而', engName: 'Yeung Sin Yee Janice', height: 158, gender: 'F' },
+            { id: '1A15', class: '1A', num: 15, name: '陳炬良', engName: 'Chen Kui Leung Kelvin', height: 165, gender: 'M' },
+            { id: '1A16', class: '1A', num: 16, name: '張皓晉', engName: 'Cheung Ho Chun', height: 168, gender: 'M' },
+            { id: '1A17', class: '1A', num: 17, name: '韓宇翹', engName: 'Hon Yu Kiu', height: 161, gender: 'M' },
+            { id: '1A18', class: '1A', num: 18, name: '郭定康', engName: 'Kwok Ding Hong', height: 170, gender: 'M' },
+            { id: '1A19', class: '1A', num: 19, name: '林賢坤', engName: 'Lam Yin Kwan', height: 164, gender: 'M' },
+            { id: '1A20', class: '1A', num: 20, name: '劉祈亨', engName: 'Lau Ki Hang', height: 166, gender: 'M' },
+            { id: '1A21', class: '1A', num: 21, name: '陳家樂', engName: 'Chan Ka Lok', height: 165, gender: 'M' },
+            { id: '1A22', class: '1A', num: 22, name: '李芷晴', engName: 'Lee Tsz Ching', height: 155, gender: 'F' },
+            { id: '1A23', class: '1A', num: 23, name: '張俊軒', engName: 'Cheung Chun Hin', height: 168, gender: 'M' },
+            { id: '1A24', class: '1A', num: 24, name: '王梓涵', engName: 'Wong Tsz Ham', height: 158, gender: 'F' },
+            { id: '1A25', class: '1A', num: 25, name: '劉子健', engName: 'Lau Tsz Kin', height: 170, gender: 'M' },
+            { id: '1A26', class: '1A', num: 26, name: '楊詩敏', engName: 'Yeung Sze Man', height: 154, gender: 'F' },
+            { id: '1A27', class: '1A', num: 27, name: '黃浩然', engName: 'Wong Ho Yin', height: 166, gender: 'M' },
+            { id: '1A28', class: '1A', num: 28, name: '吳卓希', engName: 'Ng Cheuk Hei', height: 169, gender: 'M' },
+            { id: '1A29', class: '1A', num: 29, name: '周嘉慧', engName: 'Chow Ka Wai', height: 156, gender: 'F' },
+            { id: '1A30', class: '1A', num: 30, name: '林子豪', engName: 'Lam Tsz Ho', height: 172, gender: 'M' },
+            { id: '1A31', class: '1A', num: 31, name: '何曉彤', engName: 'Ho Hiu Tung', height: 152, gender: 'F' },
+            
+            // 1B班 (32人)
+            { id: '1B01', class: '1B', num: 1, name: '區子傑', engName: 'Au Tsz Kit', height: 160, gender: 'M' },
+            { id: '1B02', class: '1B', num: 2, name: '陳浩然', engName: 'Chan Ho Yin', height: 165, gender: 'M' },
+            { id: '1B03', class: '1B', num: 3, name: '張芷晴', engName: 'Cheung Tsz Ching', height: 150, gender: 'F' },
+            { id: '1B04', class: '1B', num: 4, name: '鍾建平', engName: 'Chung Kin Ping', height: 168, gender: 'M' },
+            { id: '1B05', class: '1B', num: 5, name: '馮曉彤', engName: 'Fung Hiu Tung', height: 152, gender: 'F' },
+            { id: '1B06', class: '1B', num: 6, name: '何嘉慧', engName: 'Ho Ka Wai', height: 155, gender: 'F' },
+            { id: '1B07', class: '1B', num: 7, name: '黎卓軒', engName: 'Lai Cheuk Hin', height: 170, gender: 'M' },
+            { id: '1B08', class: '1B', num: 8, name: '林子健', engName: 'Lam Tsz Kin', height: 166, gender: 'M' },
+            { id: '1B09', class: '1B', num: 9, name: '李嘉欣', engName: 'Lee Ka Yan', height: 158, gender: 'F' },
+            { id: '1B10', class: '1B', num: 10, name: '梁柏霆', engName: 'Leung Pak Ting', height: 162, gender: 'M' },
+            { id: '1B11', class: '1B', num: 11, name: '盧凱婷', engName: 'Lo Hoi Ting', height: 148, gender: 'F' },
+            { id: '1B12', class: '1B', num: 12, name: '吳家樂', engName: 'Ng Ka Lok', height: 172, gender: 'M' },
+            { id: '1B13', class: '1B', num: 13, name: '彭詩敏', engName: 'Pang Sze Man', height: 154, gender: 'F' },
+            { id: '1B14', class: '1B', num: 14, name: '蘇穎欣', engName: 'So Wing Yan', height: 151, gender: 'F' },
+            { id: '1B15', class: '1B', num: 15, name: '曾智偉', engName: 'Tsang Chi Wai', height: 169, gender: 'M' },
+            { id: '1B16', class: '1B', num: 16, name: '謝安琪', engName: 'Tse On Kei', height: 156, gender: 'F' },
+            { id: '1B17', class: '1B', num: 17, name: '黃晉宇', engName: 'Wong Chun Yu', height: 164, gender: 'M' },
+            { id: '1B18', class: '1B', num: 18, name: '王美玲', engName: 'Wong Mei Ling', height: 153, gender: 'F' },
+            { id: '1B19', class: '1B', num: 19, name: '楊浩宇', engName: 'Yeung Ho Yu', height: 167, gender: 'M' },
+            { id: '1B20', class: '1B', num: 20, name: '葉佩雯', engName: 'Yip Pui Man', height: 159, gender: 'F' },
+            { id: '1B21', class: '1B', num: 21, name: '黎建威', engName: 'Lai Kin Wai', height: 168, gender: 'M' },
+            { id: '1B22', class: '1B', num: 22, name: '陳芷茵', engName: 'Chan Tsz Yan', height: 153, gender: 'F' },
+            { id: '1B23', class: '1B', num: 23, name: '梁展鋒', engName: 'Leung Chin Fung', height: 171, gender: 'M' },
+            { id: '1B24', class: '1B', num: 24, name: '郭美玲', engName: 'Kwok Mei Ling', height: 155, gender: 'F' },
+            { id: '1B25', class: '1B', num: 25, name: '鄭嘉晉', engName: 'Cheng Ka Chun', height: 165, gender: 'M' },
+            { id: '1B26', class: '1B', num: 26, name: '黃麗儀', engName: 'Wong Lai Yee', height: 150, gender: 'F' },
+            { id: '1B27', class: '1B', num: 27, name: '蔡俊熙', engName: 'Choi Chun Hei', height: 170, gender: 'M' },
+            { id: '1B28', class: '1B', num: 28, name: '曾慧敏', engName: 'Tsang Wai Man', height: 158, gender: 'F' },
+            { id: '1B29', class: '1B', num: 29, name: '何家寶', engName: 'Ho Ka Po', height: 166, gender: 'M' },
+            { id: '1B30', class: '1B', num: 30, name: '盧梓健', engName: 'Lo Tsz Kin', height: 169, gender: 'M' },
+            { id: '1B31', class: '1B', num: 31, name: '彭美琪', engName: 'Pang Mei Ki', height: 154, gender: 'F' },
+            { id: '1B32', class: '1B', num: 32, name: '蘇家俊', engName: 'So Ka Chun', height: 173, gender: 'M' },
+
+            // 1C班 (30人)
+            { id: '1C01', class: '1C', num: 1, name: '張心穎', engName: 'Cheung Sum Wing Yan Ember', height: 145, gender: 'F' },
+            { id: '1C02', class: '1C', num: 2, name: '伍朗儀', engName: 'Ng Long Yee', height: 159, gender: 'F' },
+            { id: '1C03', class: '1C', num: 3, name: '鄧婥瀅', engName: 'Tang Cheuk Ying', height: 148, gender: 'F' },
+            { id: '1C04', class: '1C', num: 4, name: '鄧莃悠', engName: 'Tang Hei Yau', height: 149, gender: 'F' },
+            { id: '1C05', class: '1C', num: 5, name: '黃晞童', engName: 'Wong Hei Tung', height: 156, gender: 'F' },
+            { id: '1C06', class: '1C', num: 6, name: '殷悅', engName: 'Yan Yuet', height: 154, gender: 'F' },
+            { id: '1C07', class: '1C', num: 7, name: '饒珽琋', engName: 'Yiu Ting Hei Bella', height: 157, gender: 'F' },
+            { id: '1C08', class: '1C', num: 8, name: '余晞彤', engName: 'Yu Hei Tung', height: 159, gender: 'F' },
+            { id: '1C09', class: '1C', num: 9, name: '陳柏宇', engName: 'Chan Pak Yu', height: 165, gender: 'M' },
+            { id: '1C10', class: '1C', num: 10, name: '鄭子謙', engName: 'Cheng Tsz Him', height: 168, gender: 'M' },
+            { id: '1C11', class: '1C', num: 11, name: '郭嘉熙', engName: 'Kwok Ka Hei', height: 162, gender: 'M' },
+            { id: '1C12', class: '1C', num: 12, name: '黎梓軒', engName: 'Lai Tsz Hin', height: 170, gender: 'M' },
+            { id: '1C13', class: '1C', num: 13, name: '林宇軒', engName: 'Lam Yu Hin', height: 161, gender: 'M' },
+            { id: '1C14', class: '1C', num: 14, name: '梁俊傑', engName: 'Leung Chun Kit', height: 166, gender: 'M' },
+            { id: '1C15', class: '1C', num: 15, name: '吳宇森', engName: 'Ng Yu Sum', height: 171, gender: 'M' },
+            { id: '1C16', class: '1C', num: 16, name: '潘俊熙', engName: 'Poon Chun Hei', height: 164, gender: 'M' },
+            { id: '1C17', class: '1C', num: 17, name: '鄧浩然', engName: 'Tang Ho Yin', height: 169, gender: 'M' },
+            { id: '1C18', class: '1C', num: 18, name: '黃子軒', engName: 'Wong Tsz Hin', height: 167, gender: 'M' },
+            { id: '1C19', class: '1C', num: 19, name: '楊凱晴', engName: 'Yeung Hoi Ching', height: 152, gender: 'F' },
+            { id: '1C20', class: '1C', num: 20, name: '葉梓晴', engName: 'Yip Tsz Ching', height: 155, gender: 'F' },
+            { id: '1C21', class: '1C', num: 21, name: '袁嘉慧', engName: 'Yuen Ka Wai', height: 155, gender: 'F' },
+            { id: '1C22', class: '1C', num: 22, name: '張展鵬', engName: 'Cheung Chin Pang', height: 170, gender: 'M' },
+            { id: '1C23', class: '1C', num: 23, name: '李心穎', engName: 'Lee Sum Wing', height: 152, gender: 'F' },
+            { id: '1C24', class: '1C', num: 24, name: '王柏熹', engName: 'Wong Pak Hei', height: 168, gender: 'M' },
+            { id: '1C25', class: '1C', num: 25, name: '林可盈', engName: 'Lam Ho Ying', height: 156, gender: 'F' },
+            { id: '1C26', class: '1C', num: 26, name: '陳子豪', engName: 'Chan Tsz Ho', height: 165, gender: 'M' },
+            { id: '1C27', class: '1C', num: 27, name: '黃佩珊', engName: 'Wong Pui Shan', height: 154, gender: 'F' },
+            { id: '1C28', class: '1C', num: 28, name: '周皓文', engName: 'Chow Ho Man', height: 172, gender: 'M' },
+            { id: '1C29', class: '1C', num: 29, name: '吳凱婷', engName: 'Ng Hoi Ting', height: 158, gender: 'F' },
+            { id: '1C30', class: '1C', num: 30, name: '鄭宇軒', engName: 'Cheng Yu Hin', height: 169, gender: 'M' }
+        ];
+
+        // 為學生分配 AI 動畫人物頭像 (基於其名字生成，每次顯示均相同)
+        mockData.forEach(s => {
+            const seed = encodeURIComponent(s.engName || s.name);
+            // 使用 DiceBear Lorelei 風格的 AI 動畫人物
+            s.photo = `https://api.dicebear.com/9.x/lorelei/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`; 
+        });
+
+        // 系統狀態
+        let currentClass = '1A';
+        let allStudents = [];
+        let unassignedStudents = []; // 存放在左側的學生 ID 列表
+        let seats = {}; // key: 座位索引 (如 "0-0" = 第1列第1行), value: 學生 ID
+        let draggedStudentId = null;
+
+        // DOM 元素
+        const classSelect = document.getElementById('classSelect');
+        const rowsInput = document.getElementById('rowsInput');
+        const colsInput = document.getElementById('colsInput');
+        const layoutSelect = document.getElementById('layoutSelect');
+        const studentListEl = document.getElementById('studentList');
+        const seatingGridEl = document.getElementById('seatingGrid');
+        const unassignedCountEl = document.getElementById('unassignedCount');
+        const classTitleDisplay = document.getElementById('classTitleDisplay');
+
+        // 初始化
+        function init() {
+            loadClassData();
+            setupEventListeners();
+            renderAll();
+        }
+
+        // 根據選擇的班級載入數據
+        function loadClassData() {
+            currentClass = classSelect.value;
+            classTitleDisplay.innerText = `${currentClass} 班座位表`; // 更新座位表上方標題
+            
+            allStudents = mockData.filter(s => s.class === currentClass);
+            
+            // 重置狀態：將該班別所有人放入左側，清空座位
+            unassignedStudents = allStudents.map(s => s.id);
+            seats = {};
+            
+            // 自動調整適合的行列數以容納該班人數 (預設 6x6)
+            const total = allStudents.length;
+            if(total > 0 && total > rowsInput.value * colsInput.value) {
+                colsInput.value = Math.ceil(Math.sqrt(total));
+                rowsInput.value = Math.ceil(total / colsInput.value);
+            }
+        }
+
+        // 監聽器設置
+        function setupEventListeners() {
+            classSelect.addEventListener('change', () => { loadClassData(); renderAll(); });
+            rowsInput.addEventListener('change', renderAll);
+            colsInput.addEventListener('change', renderAll);
+            layoutSelect.addEventListener('change', renderAll);
+        }
+
+        // --- 渲染邏輯 ---
+
+        function renderAll() {
+            renderSidebar();
+            renderGrid();
+        }
+
+        function getStudentById(id) {
+            return allStudents.find(s => s.id === id);
+        }
+
+        function renderSidebar() {
+            studentListEl.innerHTML = '';
+            
+            // 排序：確保側邊欄始終按學號排序
+            const sortedUnassigned = [...unassignedStudents].sort((a, b) => {
+                return getStudentById(a).num - getStudentById(b).num;
+            });
+
+            sortedUnassigned.forEach(id => {
+                const student = getStudentById(id);
+                // 防錯：如果找不到對應學生(例如切換班級殘留)，則略過
+                if(student) {
+                    studentListEl.appendChild(createStudentCard(student, false));
+                }
+            });
+
+            unassignedCountEl.innerText = `未分配學生 (${unassignedStudents.length})`;
+        }
+
+        function renderGrid() {
+            const rows = parseInt(rowsInput.value) || 6;
+            const cols = parseInt(colsInput.value) || 6;
+            const layout = layoutSelect.value;
+            
+            seatingGridEl.innerHTML = '';
+
+            for (let r = 0; r < rows; r++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'flex justify-center mb-2'; // 修改: 進一步縮減上下間距，騰出垂直空間
+                
+                // 處理 4人一組的行間距 (每兩列加一個較大的 bottom margin)
+                if (layout === 'group4' && r % 2 === 1 && r !== rows - 1) {
+                    rowDiv.classList.add('mb-5'); // 修改: 微調群組間距
+                }
+
+                for (let c = 0; c < cols; c++) {
+                    const seatId = `${r}-${c}`;
+                    const seatDiv = document.createElement('div');
+                    
+                    // 座位基礎樣式 (修改: 橫向排版 -> w-40 加寬, h-[4.5rem] 變矮, flex-row 確保元素平行)
+                    seatDiv.className = 'seat w-40 h-[4.5rem] bg-gray-50 border-2 border-gray-300 rounded-lg shadow-sm flex flex-row items-center justify-center p-1 mx-1 relative overflow-hidden';
+                    
+                    // 處理列間距 (走廊)
+                    if (layout === 'double' && c % 2 === 1 && c !== cols - 1) {
+                        seatDiv.classList.add('mr-6'); // 雙連座走廊
+                    } else if (layout === 'group4' && c % 2 === 1 && c !== cols - 1) {
+                        seatDiv.classList.add('mr-6'); // 4人一組的垂直走廊
+                    }
+
+                    // 設置拖放屬性
+                    seatDiv.setAttribute('data-seat-id', seatId);
+                    seatDiv.ondragover = allowDrop;
+                    seatDiv.ondrop = (e) => dropToSeat(e, seatId);
+                    seatDiv.ondragenter = (e) => e.currentTarget.classList.add('drag-over');
+                    seatDiv.ondragleave = (e) => e.currentTarget.classList.remove('drag-over');
+
+                    // 檢查座位上是否有學生
+                    const studentId = seats[seatId];
+                    if (studentId) {
+                        const student = getStudentById(studentId);
+                        if (student) {
+                            const card = createStudentCard(student, true);
+                            seatDiv.appendChild(card);
+                            seatDiv.classList.replace('bg-gray-50', 'bg-white');
+                            seatDiv.classList.replace('border-gray-300', 'border-blue-400'); // 有人佔用的邊框顏色
+                        }
+                    } else {
+                        // 空座位提示
+                        seatDiv.innerHTML = `<span class="text-gray-300 text-xs select-none">座位</span>`;
+                    }
+
+                    rowDiv.appendChild(seatDiv);
+                }
+                seatingGridEl.appendChild(rowDiv);
+            }
+        }
+
+        // 創建學生卡片 DOM
+        function createStudentCard(student, inSeat) {
+            const card = document.createElement('div');
+            // 修改: 如果在座位上(inSeat)，採用橫向設計 (flex-row, justify-start, 內容靠左)
+            card.className = `student-card bg-white border border-gray-200 rounded p-2 flex ${inSeat ? 'flex-row h-full w-full justify-start items-center text-left shadow-none border-none !bg-transparent !p-1' : 'items-center shadow-sm'} group`;
+            card.draggable = true;
+            card.id = `card-${student.id}`;
+            card.setAttribute('data-student-id', student.id);
+            
+            // 拖曳事件
+            card.ondragstart = (e) => {
+                draggedStudentId = student.id;
+                e.dataTransfer.setData('text/plain', student.id);
+                setTimeout(() => card.classList.add('dragging'), 0);
+            };
+            card.ondragend = () => {
+                card.classList.remove('dragging');
+                document.querySelectorAll('.seat').forEach(s => s.classList.remove('drag-over'));
+            };
+
+            // 相片處理與上傳
+            const photoContainer = document.createElement('div');
+            // 修改: 相片統一置左 (使用 shrink-0 防止被擠壓，並設定右側間距)
+            photoContainer.className = `relative cursor-pointer shrink-0 ${inSeat ? 'mr-2' : 'mr-3'}`;
+            photoContainer.title = "點擊上傳/更換實體照片";
+            
+            const img = document.createElement('img');
+            img.src = student.photo;
+            // 修改: 橫向排版下微調頭像大小 (從 14 改為 11)
+            img.className = `${inSeat ? 'w-11 h-11' : 'w-10 h-10'} rounded-full object-cover border-2 border-gray-100 group-hover:brightness-75 transition-all shadow-sm bg-gray-50`;
+            
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.className = 'photo-upload';
+            fileInput.onchange = (e) => handlePhotoUpload(e, student.id, img);
+
+            photoContainer.onclick = (e) => {
+                // 防止點擊相片觸發拖曳或其他事件
+                e.stopPropagation(); 
+                fileInput.click();
+            };
+
+            photoContainer.appendChild(img);
+            photoContainer.appendChild(fileInput);
+
+            // 資料區
+            const infoDiv = document.createElement('div');
+            // 修改: 增加 min-w-0 以防英文名稱過長時撐破 flex 佈局
+            infoDiv.className = `min-w-0 ${inSeat ? 'flex-1 text-left' : 'flex-1'}`;
+            
+            const numName = `<div class="font-bold text-gray-800 text-sm truncate leading-tight">${student.num}. ${student.name}</div>`;
+            // 修改: 橫向排版時，英文名改為單行顯示且支援過長截斷
+            const extraInfo = inSeat ? 
+                `<div class="text-[10px] text-gray-500 mt-0.5 truncate" title="${student.engName}">${student.engName}</div>` : 
+                `<div class="text-xs text-gray-500 flex justify-between mt-1"><span>${student.engName}</span><span title="高度" class="text-gray-400 ml-1"><i class="fa-solid fa-ruler-vertical mr-1"></i>${student.height}cm</span></div>`;
+
+            infoDiv.innerHTML = numName + extraInfo;
+
+            card.appendChild(photoContainer);
+            card.appendChild(infoDiv);
+
+            return card;
+        }
+
+        // 處理照片上傳 (轉為 Base64 儲存)
+        function handlePhotoUpload(event, studentId, imgElement) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Src = e.target.result;
+                    // 更新陣列資料
+                    const student = getStudentById(studentId);
+                    if(student) student.photo = base64Src;
+                    // 立即更新圖片顯示
+                    imgElement.src = base64Src;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // --- 拖放處理邏輯 ---
+
+        function allowDrop(e) {
+            e.preventDefault(); // 必須呼叫才能允許放下
+        }
+
+        function dropToSidebar(e) {
+            e.preventDefault();
+            const studentId = draggedStudentId;
+            if (!studentId) return;
+
+            // 檢查是否從座位拖回來的
+            const currentSeat = Object.keys(seats).find(key => seats[key] === studentId);
+            if (currentSeat) {
+                delete seats[currentSeat];
+                // 確保不會重複加入
+                if (!unassignedStudents.includes(studentId)) {
+                    unassignedStudents.push(studentId);
+                }
+                renderAll();
+            }
+        }
+
+        function dropToSeat(e, targetSeatId) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            
+            const movingStudentId = draggedStudentId;
+            if (!movingStudentId) return;
+
+            // 查找該學生目前在哪 (可能是左側，也可能是其他座位)
+            const currentSeatId = Object.keys(seats).find(key => seats[key] === movingStudentId);
+            const isFromSidebar = unassignedStudents.includes(movingStudentId);
+            
+            // 查找目標座位上是否有人
+            const existingStudentId = seats[targetSeatId];
+
+            if (existingStudentId && existingStudentId !== movingStudentId) {
+                // 情況一：目標座位有人 -> 執行【對調】或【頂替】
+                if (isFromSidebar) {
+                    // 從側邊欄拖入，替換目標學生，原學生回側邊欄
+                    unassignedStudents = unassignedStudents.filter(id => id !== movingStudentId);
+                    seats[targetSeatId] = movingStudentId;
+                    if (!unassignedStudents.includes(existingStudentId)) {
+                        unassignedStudents.push(existingStudentId);
+                    }
+                } else if (currentSeatId) {
+                    // 在兩個座位間互換
+                    seats[targetSeatId] = movingStudentId;
+                    seats[currentSeatId] = existingStudentId;
+                }
+            } else {
+                // 情況二：目標座位是空的
+                if (isFromSidebar) {
+                    unassignedStudents = unassignedStudents.filter(id => id !== movingStudentId);
+                    seats[targetSeatId] = movingStudentId;
+                } else if (currentSeatId && currentSeatId !== targetSeatId) {
+                    delete seats[currentSeatId];
+                    seats[targetSeatId] = movingStudentId;
+                }
+            }
+
+            renderAll();
+        }
+
+        // --- 自動排陣功能 ---
+
+        function getEmptySeatsArray() {
+            const rows = parseInt(rowsInput.value);
+            const cols = parseInt(colsInput.value);
+            let emptySeats = [];
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const seatId = `${r}-${c}`;
+                    if (!seats[seatId]) emptySeats.push(seatId);
+                }
+            }
+            return emptySeats;
+        }
+
+        // 收集所有在側邊欄的學生進行分配
+        function autoAssign(method) {
+            if (unassignedStudents.length === 0) {
+                alert("左側沒有未分配的學生了！");
+                return;
+            }
+
+            const emptySeats = getEmptySeatsArray();
+            if (emptySeats.length < unassignedStudents.length) {
+                alert("座位數量不足以容納所有剩餘學生，請增加行列數。");
+                return;
+            }
+
+            // 根據不同方法排序學生名單
+            let studentsToAssign = [...unassignedStudents];
+            
+            if (method === 'random') {
+                studentsToAssign.sort(() => Math.random() - 0.5);
+            } else if (method === 'number') {
+                studentsToAssign.sort((a, b) => getStudentById(a).num - getStudentById(b).num);
+            } else if (method === 'height') {
+                // 按高度排序。因為座位是由前到後 (row 0 到 row N，靠近黑板是在下方)，
+                // 邏輯上：Row 0 (最上面 = 遠離黑板) 放較高的學生，Row N (最下方 = 靠近黑板) 放較矮的學生。
+                // 所以這裡從高到矮排序，先填入遠處。
+                studentsToAssign.sort((a, b) => {
+                    const hA = parseFloat(getStudentById(a).height) || 0;
+                    const hB = parseFloat(getStudentById(b).height) || 0;
+                    return hB - hA; // 由大到小 (高到矮)
+                });
+            }
+
+            // 依序填入空座位
+            studentsToAssign.forEach((studentId, index) => {
+                const seatId = emptySeats[index];
+                seats[seatId] = studentId;
+            });
+
+            // 清空側邊欄
+            unassignedStudents = [];
+            renderAll();
+        }
+
+        // --- 修正後的清空功能 ---
+        function clearSeats() {
+            // 移除 confirm 提示框，實現真正的「一鍵清空」。
+            // 這也解決了因為部分瀏覽器沙盒限制導致彈出視窗被阻擋而無法執行的問題。
+            unassignedStudents = [...allStudents.map(s => s.id)];
+            // 徹底清空所有座位上的學生紀錄
+            seats = {};
+            // 防錯機制：重置拖曳狀態
+            draggedStudentId = null;
+            // 重新渲染畫面
+            renderAll();
+        }
+
+        // --- 匯出 PDF 功能 ---
+        function exportPDF() {
+            const element = document.getElementById('printArea');
+            const className = classSelect.value;
+            
+            // 設定 PDF 參數
+            const opt = {
+                margin:       [3, 3, 3, 3], // 修改: 將 PDF 邊界再縮小，保證滿版座位表必定能一頁裝入
+                filename:     `${className}班_座位表.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false }, 
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+            };
+
+            // 儲存為 PDF (因版面已包含白底與標題，可直接匯出)
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // 啟動應用
+        window.onload = init;
+
+    </script>
+</body>
+</html>
